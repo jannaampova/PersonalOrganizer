@@ -2,6 +2,9 @@ package app.category.service;
 
 import app.category.model.Category;
 import app.category.repository.CategoryRepository;
+import app.recurring_task.model.RecurringTask;
+import app.recurring_task.model.RecurringTaskType;
+import app.recurring_task.repository.RecurringTaskRepository;
 import app.task.model.Task;
 import app.task.service.TaskService;
 import app.user.model.User;
@@ -21,19 +24,22 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final UserService userService;
     private final TaskService taskService;
+    private final RecurringTaskRepository recurringTaskRepository;
 
-    public CategoryService(CategoryRepository categoryRepository, UserService userService, @Lazy TaskService taskService) {
+    public CategoryService(CategoryRepository categoryRepository, UserService userService, @Lazy TaskService taskService, RecurringTaskRepository recurringTaskRepository) {
         this.categoryRepository = categoryRepository;
         this.userService = userService;
         this.taskService = taskService;
+        this.recurringTaskRepository = recurringTaskRepository;
     }
 
-    public List<CategoryCombinedWithTask> makeCombinedObject(List<Category> categories, LocalDate parse) {
+    public List<CategoryCombinedWithTask> makeCombinedObject(List<Category> categories, LocalDate selectedDate) {
         List<CategoryCombinedWithTask> categoryCombinedWithTasks = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+        
         for (Category category : categories) {
             for (Task task : category.getTasks()) {
-                if (parse.equals(task.getDueDate().toLocalDate())) {
+                if (selectedDate.equals(task.getDueDate().toLocalDate())) {
                     CategoryCombinedWithTask c = new CategoryCombinedWithTask();
                     c.setColor(category.getColor());
                     c.setPriority(task.getPriority());
@@ -43,7 +49,56 @@ public class CategoryService {
                 }
             }
         }
+        
+        addRecurringTasksForDate(categories, selectedDate, categoryCombinedWithTasks, formatter);
+        
         return categoryCombinedWithTasks;
+    }
+    
+    private void addRecurringTasksForDate(List<Category> categories, LocalDate selectedDate, List<CategoryCombinedWithTask> categoryCombinedWithTasks, DateTimeFormatter formatter) {
+        if (categories.isEmpty()) {
+            return;
+        }
+        
+        List<RecurringTask> recurringTasks = recurringTaskRepository.findByTaskUser(categories.get(0).getUser());
+        
+        for (RecurringTask rt : recurringTasks) {
+            LocalDate taskStartDate = rt.getStartDate().toLocalDate();
+            LocalDate taskEndDate = rt.getEndDate().toLocalDate();
+            
+            if (selectedDate.isBefore(taskStartDate) || selectedDate.isAfter(taskEndDate)) {
+                continue;
+            }
+            
+            if (!isOccurrenceDate(taskStartDate, selectedDate, rt.getType())) {
+                continue;
+            }
+            
+            Task recurringTask = rt.getTask();
+            Category taskCategory = recurringTask.getCategory();
+            
+            CategoryCombinedWithTask c = new CategoryCombinedWithTask();
+            c.setColor(taskCategory.getColor());
+            c.setPriority(recurringTask.getPriority());
+            c.setTitleTask(recurringTask.getTitle());
+            c.setDate(recurringTask.getDueDate().toLocalTime().format(formatter));
+            categoryCombinedWithTasks.add(c);
+        }
+    }
+    
+    private boolean isOccurrenceDate(LocalDate startDate, LocalDate selectedDate, RecurringTaskType type) {
+        switch (type) {
+            case DAILY:
+                return !selectedDate.isBefore(startDate);
+            case WEEKLY:
+                return selectedDate.equals(startDate) || !selectedDate.isBefore(startDate) && selectedDate.getDayOfWeek() == startDate.getDayOfWeek();
+            case MONTHLY:
+                return selectedDate.equals(startDate) || !selectedDate.isBefore(startDate) && selectedDate.getDayOfMonth() == startDate.getDayOfMonth();
+            case YEARLY:
+                return selectedDate.equals(startDate) || !selectedDate.isBefore(startDate) && selectedDate.getDayOfYear() == startDate.getDayOfYear();
+            default:
+                return false;
+        }
     }
 
     public void createCategory(User user, CategoryRequest categoryRequest) {

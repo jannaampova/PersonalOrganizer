@@ -7,6 +7,7 @@ import app.notification.model.Notification;
 import app.notification.service.NotificationService;
 import app.recurring_task.model.RecurringTask;
 import app.recurring_task.model.RecurringTaskType;
+import app.recurring_task.repository.RecurringTaskRepository;
 import app.recurring_task.service.RecurringTaskService;
 import app.subscription.model.SubscriptionType;
 import app.task.model.Task;
@@ -33,14 +34,16 @@ import java.util.*;
 @Service
 public class TaskService {
     private final TaskRepository taskRepository;
+    private final RecurringTaskRepository recurringTaskRepository;
     private final ConversionService conversionService;
     private final CategoryService categoryService;
     private final RecurringTaskService recurringTaskService;
     private final UserService userService;
     private final NotificationService notificationService;
 
-    public TaskService(TaskRepository taskRepository, ConversionService conversionService, CategoryService categoryService, RecurringTaskService recurringTaskService, UserService userService, NotificationService notificationService) {
+    public TaskService(TaskRepository taskRepository, RecurringTaskRepository recurringTaskRepository, ConversionService conversionService, CategoryService categoryService, RecurringTaskService recurringTaskService, UserService userService, NotificationService notificationService) {
         this.taskRepository = taskRepository;
+        this.recurringTaskRepository = recurringTaskRepository;
         this.conversionService = conversionService;
         this.categoryService = categoryService;
         this.recurringTaskService = recurringTaskService;
@@ -202,7 +205,57 @@ public class TaskService {
                 taskCounts.put(date.toLocalDate(), count.intValue());
             }
         }
+        
+        addRecurringTaskOccurrences(taskCounts, start, end, user);
+        
         return taskCounts;
+    }
+    
+    private void addRecurringTaskOccurrences(Map<LocalDate, Integer> taskCounts, LocalDate start, LocalDate end, User user) {
+        List<RecurringTask> recurringTasks = recurringTaskRepository.findByTaskUser(user);
+        
+        for (RecurringTask rt : recurringTasks) {
+            LocalDate taskStartDate = rt.getStartDate().toLocalDate();
+            LocalDate taskEndDate = rt.getEndDate().toLocalDate();
+            
+            if (taskEndDate.isBefore(start) || taskStartDate.isAfter(end)) {
+                continue;
+            }
+            
+            LocalDate effectiveStart = taskStartDate.isBefore(start) ? start : taskStartDate;
+            LocalDate effectiveEnd = taskEndDate.isAfter(end) ? end : taskEndDate;
+            
+            switch (rt.getType()) {
+                case DAILY -> {
+                    LocalDate current = effectiveStart;
+                    while (!current.isAfter(effectiveEnd)) {
+                        taskCounts.merge(current, 1, Integer::sum);
+                        current = current.plusDays(1);
+                    }
+                }
+                case WEEKLY -> {
+                    LocalDate current = effectiveStart;
+                    while (!current.isAfter(effectiveEnd)) {
+                        taskCounts.merge(current, 1, Integer::sum);
+                        current = current.plusWeeks(1);
+                    }
+                }
+                case MONTHLY -> {
+                    LocalDate current = effectiveStart;
+                    while (!current.isAfter(effectiveEnd)) {
+                        taskCounts.merge(current, 1, Integer::sum);
+                        current = current.plusMonths(1);
+                    }
+                }
+                case YEARLY -> {
+                    LocalDate current = effectiveStart;
+                    while (!current.isAfter(effectiveEnd)) {
+                        taskCounts.merge(current, 1, Integer::sum);
+                        current = current.plusYears(1);
+                    }
+                }
+            }
+        }
     }
 
 
@@ -246,7 +299,7 @@ public class TaskService {
 
     public List<Deadline> getTasksIntoDeadlineObject(User user) {
         List<Deadline> deadlines = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d HH:mm", Locale.ENGLISH);
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
         for (Category category : user.getCategories()) {
             for (Task task : category.getTasks()) {
@@ -312,12 +365,22 @@ public class TaskService {
     }
 
     public void generateRecurringTask(RecurringTask recurringTask) throws AccessDeniedException {
-        Task originalTask=recurringTask.getTask();
-        LocalDateTime newStartDate = getNextDate(originalTask.getStartDate(),recurringTask.getType());
-        LocalDateTime newDueDate = getNextDate(originalTask.getDueDate(),recurringTask.getType());
+        Task originalTask = recurringTask.getTask();
+        LocalDateTime newStartDate = getNextDate(originalTask.getStartDate(), recurringTask.getType());
+        LocalDateTime newDueDate = getNextDate(originalTask.getDueDate(), recurringTask.getType());
 
-        Task buildUpdatedTask = originalTask.toBuilder().startDate(newStartDate).dueDate(newDueDate).build();
-        taskRepository.save(buildUpdatedTask);
+        Task newTask = Task.builder()
+                .user(originalTask.getUser())
+                .title(originalTask.getTitle())
+                .description(originalTask.getDescription())
+                .category(originalTask.getCategory())
+                .startDate(newStartDate)
+                .dueDate(newDueDate)
+                .priority(originalTask.getPriority())
+                .status(TaskStatus.NOT_STARTED)
+                .recurringTask(recurringTask)
+                .build();
+        taskRepository.save(newTask);
     }
 
     private LocalDateTime getNextDate(LocalDateTime startDate, RecurringTaskType type) {

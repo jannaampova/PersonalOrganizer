@@ -21,8 +21,8 @@ public class RecurringTaskService {
         RecurringTask recurringTask = RecurringTask.builder()
                 .task(savedTask)
                 .type(task.getRecurringTaskType())
-                .endDate(task.getEndOccurrence().atStartOfDay())
-                .startDate(LocalDateTime.now())
+                .startDate(task.getStartDate().atStartOfDay())
+                .endDate(task.getEndOccurrence().atTime(23, 59, 59))
                 .build();
         recurringTaskRepository.save(recurringTask);
     }
