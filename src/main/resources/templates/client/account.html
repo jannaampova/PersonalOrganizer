@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskly - Account Settings</title>
+    <link href="/css/client/account.css" rel="stylesheet">
+    <link href="/css/client/sidebar.css" rel="stylesheet">
+    <!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">-->
+    <link rel="shortcut icon" href="/images/logo.png" type="image/x-icon">
+
+    <!-- Bootstrap JS Bundle (required for modal) -->
+    <!--    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>-->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://ucarecdn.com/libs/widget/3.12.0/uploadcare.full.min.js"></script>
+
+</head>
+<body>
+<div class="container">
+    <th:block th:insert="fragments/menu :: client-menu"></th:block>
+    <div class="main-content">
+        <div class="account-form">
+            <form id="myForm" th:action="@{'/accounts/'+${user.id}}" th:method="PUT" th:object="${request}">
+
+                <div class="profile-section">
+                    <div class="profile-photo-container">
+                        <div class="profile-photo"
+                             id="profilePhoto">
+                            <span th:if="${user.photoPath==null || user.photoPath.isEmpty()}">👤</span>
+                            <span th:unless="${user.photoPath==null || user.photoPath.isEmpty()}"><img
+                                    th:src="${user.photoPath}" alt="Photo"></span>
+                        </div>
+
+                        <div class="photo-group" id="photoGroup">
+                            <input th:field="*{photo}" type="hidden" role="uploadcare-uploader"
+                                   name="record_image" id="record_image"/>
+                        </div>
+                        <script>
+                            uploadcare.start({
+                                publicKey: '0c784d99760e23804a0e'
+                            });
+
+                            var widget = uploadcare.Widget('#record_image');
+                            widget.on('change', function (fileInfo) {
+                                if (fileInfo) {
+                                    console.log('Файлът е качен! URL:', fileInfo.cdnUrl);
+                                    document.getElementById('record_image').value = fileInfo.cdnUrl; // Това ще сложи URL-то в твоя input
+                                }
+                            });
+                        </script>
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-name" th:text="${user.name}">John Doe</div>
+                        <div class="profile-email" th:text="${user.email}">username@gmail.com</div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" th:field="*{name}" readonly>
+                        <div th:if="${#fields.hasErrors('name')}"  class="invalid-feedback">   <span th:errors="*{name}"></span></div>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" th:field="*{username}" readonly>
+                        <div th:if="${#fields.hasErrors('username')}"  class="invalid-feedback">   <span th:errors="*{username}"></span></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" th:field="*{email}" readonly>
+                        <div th:if="${#fields.hasErrors('email')}"  class="invalid-feedback">   <span th:errors="*{email}"></span></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Account created at</label>
+                        <span th:text="${#temporals.format(user.createdAt,'yyyy/MM/dd')}"
+                              class="created-at-field"></span>
+                    </div>
+                </div>
+            </form>
+            <div class="form-group">
+                <label>Password</label>
+                <div style="position: relative;">
+                    <label>
+                        <input type="password" value="********" readonly>
+                    </label>
+                    <button class="action-button" id="changePasswordBtn" style="display: none;">
+                        <i>🔒</i> Change password
+                    </button>
+                    <form th:action="@{'/accounts/password/'+${user.id}}" th:method="PUT" th:object="${request}">
+                        <div class="password-section" id="passwordChangeSection">
+                            <div class="password-field-group">
+                                <input th:field="*{password}" type="password" placeholder="Current password"
+                                       class="form-control">
+                                <i>👁️</i>
+                            </div>
+                            <div class="password-field-group">
+                                <input th:field="*{confirmPassword}" type="password" placeholder="New password"
+                                       class="form-control">
+                                <i>👁️</i>
+                            </div>
+                            <div class="password-requirements">
+                                Password must be at least 8 characters long and include uppercase, lowercase,
+                                number,
+                                and special character
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="subscription-section">
+                <div class="subscription-header">
+                    <div class="subscription-title">Subscriptions</div>
+                    <a class="subscription-btn" href="/subscriptions">
+                        View Plan
+                    </a>
+                </div>
+                <p>Browse plans and select your subscription type.</p>
+            </div>
+            <button class="btn btn-danger" id="deleteAccountBtn" style="display: none;">Delete account</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal" id="deleteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Delete Account</h3>
+            <button class="close-modal">&times;</button>
+        </div>
+        <p>Are you sure you want to delete your account? This action cannot be undone.</p>
+        <form th:action="@{'/accounts/'+${user.id}}" th:method="DELETE">
+            <div style="margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-danger">Confirm Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+<button type="button" class="edit-btn" id="editBtn">
+    ✏️
+</button>
+
+
+<script>
+    // Modal functionality
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    const closeModalBtns = document.querySelectorAll('.close-modal');
+    const editBtn = document.getElementById('editBtn');
+    console.log(editBtn);
+    const photoBtn = document.getElementById('photoGroup');
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    const passwordChangeSection = document.getElementById('passwordChangeSection');
+    const inputs = document.querySelectorAll('input:not([type="password"]):not(.created-at-field)');
+    let isEditMode = false;
+
+    // Edit mode toggle
+    editBtn.addEventListener('click', () => {
+        isEditMode = !isEditMode;
+        inputs.forEach(input => {
+            input.readOnly = !isEditMode;
+        });
+        deleteAccountBtn.style.display = isEditMode ? 'block' : 'none';
+        changePasswordBtn.style.display = isEditMode ? 'inline-flex' : 'none';
+        photoBtn.style.display = isEditMode ? 'flex' : 'none';
+
+        if (!isEditMode) {
+            passwordChangeSection.classList.remove('visible');
+        }
+        if (isEditMode) {
+            editBtn.classList.add('save-mode');
+            editBtn.innerHTML = '💾 <span>Save Changes</span>';
+
+        } else {
+            editBtn.classList.remove('save-mode');
+            editBtn.innerHTML = '✏️';
+            const form = document.getElementById('myForm');
+            form.submit();
+        }
+    });
+    changePasswordBtn.addEventListener('click', () => {
+        if (passwordChangeSection.classList.contains('visible')) {
+            passwordChangeSection.classList.remove('visible');
+        } else {
+            passwordChangeSection.classList.add('visible');
+        }
+    });
+    document.querySelectorAll('.password-field-group i').forEach(icon => {
+        icon.addEventListener('click', () => {
+            const input = icon.previousElementSibling;
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = '👁️‍🗨️';
+            } else {
+                input.type = 'password';
+                icon.textContent = '👁️';
+            }
+        });
+    });
+    deleteAccountBtn.addEventListener('click', () => {
+        deleteModal.style.display = 'flex';
+    });
+
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            deleteModal.style.display = 'none';
+        });
+    });
+
+    window.addEventListener('click', (e) => {
+        if (e.target === deleteModal) {
+            deleteModal.style.display = 'none';
+        }
+    });
+</script>
+</body>
+</html> 

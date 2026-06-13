@@ -1,0 +1,87 @@
+<div class="sidebar" th:fragment="client-menu">
+    <div class="logo">
+        <span><img style="height: 30px;width: 40px" src="/images/logo.png" alt="✨ Taskly"></span> <span th:text="'Hi '+${user.getUsername()}"></span>
+    </div>
+    <ul class="nav-menu">
+        <li class="nav-item">
+            <a th:href="@{/home}" th:class="${page == 'Calendar' ? 'nav-link active' : 'nav-link'}">
+                <span>📅</span> Calendar
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a th:href="@{/tasks}" th:class="${page == 'Tasks' ? 'nav-link active' : 'nav-link'}">
+                <span>📝</span> My Tasks
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a th:href="@{/statistics}" th:class="${page == 'Statistics' ? 'nav-link active' : 'nav-link'}">
+                <span>📊</span> My Stats
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a th:href="@{/accounts}" th:class="${page == 'Account' ? 'nav-link active' : 'nav-link'}">
+                <span>👤</span> Account
+            </a>
+        </li>
+
+
+        <li class="nav-item">
+            <a th:href="@{/help}" th:class="${page == 'FAQ' ? 'nav-link active' : 'nav-link'}">
+                <span>📞</span> Help & FAQ
+            </a>
+        </li>
+
+
+        <li class="nav-item">
+            <a href="/logout" class="nav-link">
+                <span>🚪</span> Log Out
+            </a>
+        </li>
+    </ul>
+</div>
+
+<div class="sidebar" th:fragment="admin-menu">
+    <div class="logo">
+        <span><img style="height: 30px;width: 40px" src="/images/logo.png" alt="✨ Taskly"></span>  Admin
+    </div>
+    <ul class="nav-menu">
+         <li class="nav-item">
+            <a th:href="@{/dashboard}" th:class="${page == 'Dashboard' ? 'nav-link active' : 'nav-link'}">
+                <span>📊</span> Dashboard
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a th:href="@{/users}" th:class="${page == 'Users' ? 'nav-link active' : 'nav-link'}">
+                <span>👥</span> Users
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a th:href="@{/settings}" th:class="${page == 'Settings' ? 'nav-link active' : 'nav-link'}">
+                <span>⚙️</span> Settings
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a th:href="@{/analytics}" th:class="${page == 'Analytics' ? 'nav-link active' : 'nav-link'}">
+                <span>📈</span> Analytics
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a th:href="@{/email}" th:class="${page == 'Email' ? 'nav-link active' : 'nav-link'}">
+                <span>📧</span> Email
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="/logout" class="nav-link">
+                <span>🚪</span> Log Out
+            </a>
+        </li>
+    </ul>
+</div>

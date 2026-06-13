@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskly - User Management</title>
+    <link href="/css/admin/users.css" rel="stylesheet">
+        <link href="/css/admin/adminSidebar.css" rel="stylesheet">
+    <link rel="shortcut icon" href="/images/logo.png" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap JS Bundle (required for modal) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <th:block th:insert="fragments/menu :: admin-menu"></th:block>
+    <div class="main-content">
+        <div class="admin-header">
+            <h1>User Management</h1>
+        </div>
+        <form id="myForm" th:action="@{/users}" th:method="GET">
+        <div class="filters-section">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Search</label>
+                    <input th:value="${name}" id="userByName" name="name" type="text" class="filter-input" placeholder="Search users...">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Status</label>
+                    <select onchange="this.form.submit()" name="status" class="filter-select">
+                        <option th:selected="${status} == ''" value="">All Statuses</option>
+                        <option th:selected="${status} == 'active' " value="active">Active</option>
+                        <option th:selected="${status} == 'inactive' " value="inactive">Inactive</option>
+                    </select>
+
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Subscription</label>
+                    <select onchange="this.form.submit()" name="subscriptionType" class="filter-select">
+                        <option th:selected="${subscriptionType}==''" value="">All Plans</option>
+                        <option th:selected="${subscriptionType}=='free'" value="free">Free</option>
+                        <option th:selected="${subscriptionType}=='premium'" value="premium">Premium</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Sort By</label>
+                    <select onchange="this.form.submit()" name="sort" class="filter-select">
+                        <option th:selected="${sort}=='name'" value="name">Name</option>
+                        <option th:selected="${sort}=='date'" value="date">Date Joined</option>
+                        <option th:selected="${sort}=='subscription'" value="subscription">Subscription</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        </form>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Subscription</th>
+                    <th>Status</th>
+                    <th>Joined Date</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="user,stat : ${allUsers}">
+                    <td th:text="${stat.index+1}"></td>
+                    <td th:text="${user.getName()}"></td>
+                    <td  th:text="${user.getEmail()}"></td>
+                    <td th:text="${user.getSubscription().getType()}"><span class="subscription-badge subscription-premium"></span></td>
+                    <td><span th:if="${user.isActive()}" class="status-badge status-active">Active</span>
+                        <span th:unless="${user.isActive()}" class="status-badge status-inactive">InActive</span></td>
+                    <td th:text="${#temporals.format(user.getCreatedAt(),'MM/dd/yyyy')}"></td>
+                    <td>
+                        <button class="btn btn-primary edit-user-btn" data-bs-toggle="modal" data-bs-target="#editUserModal"
+                                th:attr="
+     user-id=${user.getId()},
+     user-name=${user.getName()},
+     user-email=${user.getEmail()},
+     user-subsType=${user.getSubscription().getType()},
+     user-status=${user.isActive() ? 'active' : 'inactive'}
+ " >
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" style="display: none;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Edit User</h3>
+            <button class="close-modal" data-bs-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body">
+        <form id="editUserForm" th:action="@{/users/save}" th:method="PUT" th:object="${userRequest}">
+            <input type="hidden" th:field="*{userId}" id="userId"></input>
+            <div class="form-group">
+                <label for="editName">Name</label>
+                <input  class="form-control" type="text" id="editName" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editEmail">Email</label>
+                <input class="form-control" type="email" id="editEmail" readonly>
+            </div>
+            <div class="form-group">
+                <label for="editSubscription">Subscription</label>
+                <select class="form-control" th:field="*{subscriptionType}" id="editSubscription" required>
+                    <option th:each="type : ${accTypes}"
+                            th:value="${type}"
+                            th:text="${#strings.capitalize(type)}">
+                    </option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="editStatus">Status</label>
+                <select  class="form-control" th:field="*{status}" id="editStatus" required>
+                    <option  th:value="active">Active</option>
+                    <option  th:value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-danger" id="cancelEdit">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+        </div>
+    </div>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('editUserModal');
+
+        modal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget; // the clicked Edit button
+
+            // Get data attributes
+            const name = button.getAttribute('user-name') || '';
+            const email = button.getAttribute('user-email') || '';
+            const subsType = button.getAttribute('user-subsType') || '';
+            const status = button.getAttribute('user-status') || '';
+            const id = button.getAttribute('user-id') || '';
+
+            // Fill fields
+            document.getElementById('editName').value = name;
+            document.getElementById('editEmail').value = email;
+            document.getElementById('userId').value = id;
+
+            document.getElementById('editStatus').value = status;
+            document.getElementById('editSubscription').value = subsType;
+        });
+    });
+</script>
+<script>
+    const input = document.getElementById("userByName");
+    const form = document.getElementById("myForm");
+
+    input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            form.submit();
+        };
+    });
+</script>
+</body>
+</html>

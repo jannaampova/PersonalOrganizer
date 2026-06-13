@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskly - Analytics</title>
+    <link href="/css/admin/analytics.css" rel="stylesheet">
+    <link href="/css/admin/adminSidebar.css" rel="stylesheet">
+    <link rel="shortcut icon" href="/images/logo.png" type="image/x-icon">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+    <th:block th:insert="fragments/menu :: admin-menu"></th:block>
+
+
+    <div class="main-content">
+        <div class="analytics-section">
+            <h2 class="section-title">Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">Total Users</div>
+                    <div class="stat-value" th:text="${allUsers}">1,234</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Active Users</div>
+                    <div class="stat-value" th:text="${activeUsers}">987</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Tasks Created</div>
+                    <div class="stat-value" th:text="${allCreatedTasks}">12,345</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="analytics-section">
+            <h2 class="section-title">User Growth</h2>
+            <div class="time-filter">
+                <a th:href="@{'/analytics?growth=week'}" th:classappend="${growth=='week'?'active':' '}"
+                   class="time-filter-btn">7 Days</a>
+                <a th:href="@{'/analytics?growth=month'}" th:classappend="${growth=='month'?'active':' '}"
+                   class="time-filter-btn">30 Days</a>
+                <a th:href="@{'/analytics?growth=year'}" th:classappend="${growth=='year'?'active':' '}"
+                   class="time-filter-btn">1 Year</a>
+            </div>
+            <div class="chart-container">
+                <canvas id="userGrowthChart"></canvas>
+            </div>
+        </div>
+
+        <div class="analytics-section">
+            <h2 class="section-title">Task Analytics</h2>
+            <div class="chart-container">
+                <canvas id="taskAnalyticsChart"></canvas>
+            </div>
+        </div>
+
+        <div class="analytics-section">
+            <h2 class="section-title">Recent Activity</h2>
+            <button id="exportButton" class="export-btn">Export Data</button>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${recentActivity}">
+                        <td th:text="${#temporals.format(r.date,'MM/dd/yyyy')}">Mar 15, 2024</td>
+                        <td th:text="${r.username}">John Doe</td>
+                        <td th:text="${r.activity}">Task Created</td>
+                        <td th:text="${r.description}">Created new task "Project Planning"</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    var chartLabels = /*[[${chartInfoLabels}]]*/ [];
+    var chartData = /*[[${chartInfoValues}]]*/ [];
+    var taskCreated = /*[[${taskCreated}]]*/ [];
+    var taskCompleted = /*[[${taskCompleted}]]*/ [];
+    const userGrowthCtx = document.getElementById('userGrowthChart').getContext('2d');
+    const userGrowthChart = new Chart(userGrowthCtx, {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'New Users',
+                data: chartData,
+                borderColor: '#00B4D8',
+                tension: 0.4,
+                fill: true,
+                backgroundColor: 'rgba(0, 180, 216, 0.1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Task Analytics Chart
+    const taskAnalyticsCtx = document.getElementById('taskAnalyticsChart').getContext('2d');
+    const taskAnalyticsChart = new Chart(taskAnalyticsCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Tasks Created',
+                data: taskCreated,
+                backgroundColor: '#00B4D8'
+            }, {
+                label: 'Tasks Completed',
+                data: taskCompleted,
+                backgroundColor: '#2ECC71'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    window.onload = function() {
+        const exportButton = document.getElementById('exportButton');
+
+        exportButton.onclick = function() {
+            fetch('/export', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    } else {
+                        throw new Error('Export failed');
+                    }
+                })
+                .then(blob => {
+                    const link = document.createElement('a');
+                    const url = window.URL.createObjectURL(blob);
+                    link.href = url;
+                    link.download = 'exports.xlsx';
+                    link.click();
+                    window.location.href = '/analytics';
+                })
+                .catch(error => {
+                    console.log('Error during export:', error);
+                });
+        };
+    };
+
+
+    // Time filter functionality
+    document.querySelectorAll('.time-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.time-filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // Here you would typically update the chart data based on the selected time period
+            console.log('Time period changed:', btn.textContent);
+        });
+    });
+
+    // Export functionality
+    document.querySelector('.export-btn').addEventListener('click', () => {
+        console.log('Exporting data...');
+    });
+</script>
+</body>
+</html> 
